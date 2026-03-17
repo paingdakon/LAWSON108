@@ -385,8 +385,46 @@
       });
     });
 
-    document.getElementById('checkout-btn').addEventListener('click', function() {
-      window.location.href = 'https://' + store + '/' + selectedVariant + '/checkout';
+    document.getElementById('checkout-btn').addEventListener('click', async function() {
+      this.textContent = 'Loading...';
+      this.disabled = true;
+
+      var variantGid = btoa('gid://shopify/ProductVariant/' + selectedVariant);
+
+      try {
+        var response = await fetch('https://' + store + '/api/2024-01/graphql.json', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Storefront-Access-Token': '0da4c9ee7e50d2bc70eed8ffdc037f1a'
+          },
+          body: JSON.stringify({
+            query: `mutation {
+              checkoutCreate(input: {
+                lineItems: [{ variantId: "gid://shopify/ProductVariant/${selectedVariant}", quantity: 1 }]
+              }) {
+                checkout { webUrl }
+                checkoutUserErrors { message }
+              }
+            }`
+          })
+        });
+
+        var data = await response.json();
+        var checkout = data.data.checkoutCreate.checkout;
+
+        if (checkout && checkout.webUrl) {
+          window.location.href = checkout.webUrl;
+        } else {
+          alert('Error: ' + JSON.stringify(data.data.checkoutCreate.checkoutUserErrors));
+          this.textContent = 'Buy Now — Gift Card';
+          this.disabled = false;
+        }
+      } catch(e) {
+        alert('Error: ' + e.message);
+        this.textContent = 'Buy Now — Gift Card';
+        this.disabled = false;
+      }
     });
   </script>
 </body>
